@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Viewer with Zoom & Tiling</title>
+    <script src="https://openseadragon.github.io/openseadragon/openseadragon.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            color: #fff;
+        }
+
+        #viewer {
+            width: 100vw;
+            height: 90vh;
+            background-color: #fff;
+        }
+
+        #header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #c71585; /* Magenta */
+            padding: 10px;
+        }
+
+        #header .left-section {
+            display: flex;
+            align-items: center;
+        }
+
+        #header .logo {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        #header .info {
+            font-size: 14px;
+        }
+
+        #header .right-section {
+            position: relative;
+            font-size: 14px;
+        }
+
+        #uploadArea {
+            border: 2px dashed #fff;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-button {
+            background-color: #c71585;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .control-button:hover {
+            background-color: #9c1063;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div id="header">
+        <div class="left-section">
+            <img src="/Users/Danny/OFM viewer/OFM logo.jpeg" alt="Logo" class="logo" id="logo">
+            <div class="info">
+                <div id="filename">No file loaded</div>
+                <div id="zoom-level">Zoom: 100%</div>
+                 <!--<div id="position">Position: (0, 0)</div>-->
+            </div>
+        </div>
+        <div class="right-section">
+            <div id="uploadArea">Drag & Drop Image Here or Click to Upload</div>
+            <input type="file" id="fileInput" style="display:none;">
+        </div>
+    </div>
+
+    <!-- Viewer -->
+    <div id="viewer"></div>
+
+    <!-- Controls -->
+    <div id="controls">
+        <button class="control-button" id="zoom-in">Zoom In</button>
+        <button class="control-button" id="zoom-out">Zoom Out</button>
+        <button class="control-button" id="reset-view">Full View</button>
+    </div>
+
+    <script>
+        let viewer = OpenSeadragon({
+            id: "viewer",
+            prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+            tileSources: [],
+            showNavigator: true
+        });
+
+        const fileInput = document.getElementById("fileInput");
+        const uploadArea = document.getElementById("uploadArea");
+        const filenameDiv = document.getElementById("filename");
+        const zoomLevelDiv = document.getElementById("zoom-level");
+        const positionDiv = document.getElementById("position");
+
+        // Handle drag and drop
+        uploadArea.addEventListener("click", () => fileInput.click());
+        uploadArea.addEventListener("dragover", (event) => event.preventDefault());
+        uploadArea.addEventListener("drop", handleFileUpload);
+        fileInput.addEventListener("change", (event) => handleFileUpload(event));
+
+        function handleFileUpload(event) {
+            event.preventDefault();
+            let file = event.type === 'drop' ? event.dataTransfer.files[0] : event.target.files[0];
+            if (file && file.type.match("image.*")) {
+                let objectURL = URL.createObjectURL(file);
+                loadTileSource(objectURL, file.name);
+            }
+        }
+
+        function loadTileSource(url, name) {
+            viewer.open({ type: 'image', url: url });
+            filenameDiv.textContent = `File: ${name}`;
+        }
+
+        // Update zoom and position
+        viewer.addHandler('zoom', () => {
+            let zoom = Math.round(viewer.viewport.getZoom() * 100);
+            zoomLevelDiv.textContent = `Zoom: ${zoom}%`;
+        });
+
+        viewer.addHandler('pan', () => {
+            let center = viewer.viewport.getCenter();
+            let x = Math.round(center.x * 100) / 100;
+            let y = Math.round(center.y * 100) / 100;
+            positionDiv.textContent = `Position: (${x}, ${y})`;
+        });
+
+        // Control buttons
+        document.getElementById("zoom-in").addEventListener("click", () => {
+            viewer.viewport.zoomBy(1.2);
+            viewer.viewport.applyConstraints();
+        });
+
+        document.getElementById("zoom-out").addEventListener("click", () => {
+            viewer.viewport.zoomBy(0.8);
+            viewer.viewport.applyConstraints();
+        });
+
+        document.getElementById("reset-view").addEventListener("click", () => {
+            viewer.viewport.goHome();
+        });
+    </script>
+
+</body>
+</html>
