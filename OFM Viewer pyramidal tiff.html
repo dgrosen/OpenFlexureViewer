@@ -134,7 +134,10 @@
             id: "openseadragon",
             prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/3.0.0/images/",
             showNavigator: true,
-            tileSources: [],
+            tileSources: {
+                type: 'image',
+                url: 'image/PAP.jpg' // Use your static image here
+            },
             debugMode: false
         });
 
