@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced OpenSeadragon TIFF Viewer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Distributes space between items */
+            margin-bottom: 20px;
+        }
+        .header .logo {
+            flex: 1; /* Takes up as much space as needed */
+        }
+        .header img {
+            height: 100px; /* Adjust the height as needed */
+        }
+        .header .title {
+            flex: 2; /* Takes up more space to center the title */
+            text-align: center;
+        }
+        .header .dropzone {
+            flex: 1; /* Takes up as much space as needed */
+            text-align: right;
+        }
+        .header h1 {
+            color: #C5247F; /* Title color */
+            margin: 0;
+            font-size: 24px;
+        }
+        #dropzone {
+            width: 200px; /* Adjust width as needed */
+            height: 50px; /* Adjust height as needed */
+            border: 2px dashed #ffffff;
+            background-color: #C5247F;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        #dropzone.hover {
+            background-color: #ffffff;
+            border-color: #0056b3;
+        }
+        #dropzone p {
+            color: #ffffff;
+            font-size: 16px;
+            margin: 0;
+        }
+        #openseadragon {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #C5247F;
+            border-radius: 10px;
+            background-color: #fff;
+            margin-bottom: 20px;
+        }
+        #loading {
+            display: none;
+            font-size: 20px;
+            color: #17a2b8;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #error {
+            display: none;
+            color: #dc3545;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        #toolbar {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #toolbar button {
+            background-color: #C5247F;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        #toolbar button:hover {
+            background-color: #0056b3;
+        }
+        #toolbar button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <img src="/Users/Danny/Library/CloudStorage/OneDrive-BaylorCollegeofMedicine/3D lab/openflexure/OFM viewer/OFM logo.jpg" alt="Logo"> <!-- Replace with your image path -->
+        </div>
+        <div class="title">
+            <h1>OpenFlexure Viewer</h1>
+        </div>
+        <div class="dropzone">
+            <div id="dropzone">
+                <p>Drag & Drop</p>
+            </div>
+        </div>
+    </div>
+    <div id="loading">Loading your image, please wait...</div>
+    <div id="error">Error: Unable to load the TIFF file. Please ensure it is a valid pyramidal TIFF.</div>
+    <div id="openseadragon"></div>
+    <div id="toolbar">
+        <button id="zoomIn" disabled>Zoom In</button>
+        <button id="zoomOut" disabled>Zoom Out</button>
+        <button id="resetView" disabled>Reset View</button>
+        <button id="toggleFullScreen" disabled>Toggle Fullscreen</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/3.0.0/openseadragon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/openseadragon-imaginghelper/dist/openseadragon-imaginghelper.min.js"></script>
+    <script>
+        const viewer = OpenSeadragon({
+            id: "openseadragon",
+            prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/3.0.0/images/",
+            showNavigator: true,
+            tileSources: [],
+            debugMode: false
+        });
+
+        const dropzone = document.getElementById('dropzone');
+        const loadingIndicator = document.getElementById('loading');
+        const errorIndicator = document.getElementById('error');
+        const zoomInButton = document.getElementById('zoomIn');
+        const zoomOutButton = document.getElementById('zoomOut');
+        const resetViewButton = document.getElementById('resetView');
+        const toggleFullScreenButton = document.getElementById('toggleFullScreen');
+
+        dropzone.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropzone.classList.add('hover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('hover');
+        });
+
+        dropzone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropzone.classList.remove('hover');
+            const file = event.dataTransfer.files[0];
+            handleFileUpload(file);
+        });
+
+        dropzone.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.tif,.tiff';
+            input.onchange = (e) => handleFileUpload(e.target.files[0]);
+            input.click();
+        });
+
+        function handleFileUpload(file) {
+            errorIndicator.style.display = 'none';
+            disableToolbar();
+            if (file && (file.type === 'image/tiff' || file.name.endsWith('.tif') || file.name.endsWith('.tiff'))) {
+                loadingIndicator.style.display = 'block';
+                const fileURL = URL.createObjectURL(file);
+                viewer.open({
+                    type: 'image',
+                    url: fileURL
+                }).then(() => {
+                    loadingIndicator.style.display = 'none';
+                    enableToolbar();
+                }).catch((err) => {
+                    loadingIndicator.style.display = 'none';
+                    errorIndicator.style.display = 'block';
+                    console.error("Error loading image:", err);
+                });
+            } else {
+                errorIndicator.textContent = 'Please upload a valid pyramidal TIFF file.';
+                errorIndicator.style.display = 'block';
+            }
+        }
+
+        function enableToolbar() {
+            zoomInButton.disabled = true;
+            zoomOutButton.disabled = true;
+            resetViewButton.disabled = true;
+            toggleFullScreenButton.disabled = true;
+        }
+
+        function disableToolbar() {
+            zoomInButton.disabled = false;
+            zoomOutButton.disabled = false;
+            resetViewButton.disabled = false;
+            toggleFullScreenButton.disabled = false;
+        }
+
+        zoomInButton.addEventListener('click', () => {
+            viewer.viewport.zoomBy(1.2);
+            viewer.viewport.applyConstraints();
+        });
+
+        zoomOutButton.addEventListener('click', () => {
+            viewer.viewport.zoomBy(0.8);
+            viewer.viewport.applyConstraints();
+        });
+
+        resetViewButton.addEventListener('click', () => {
+            viewer.viewport.goHome();
+        });
+
+        toggleFullScreenButton.addEventListener('click', () => {
+            OpenSeadragon.isFullScreen() ? OpenSeadragon.exitFullScreen() : OpenSeadragon.requestFullScreen(document.body);
+        });
+    </script>
+</body>
+</html>
