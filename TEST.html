@@ -1,178 +1,43 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenFlexure Viewer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            font-family: Arial, sans-serif;
+<script>
+    function initializeViewer(imageSrc) {
+        if (viewer) {
+            viewer.destroy();
         }
-        #viewer {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            -webkit-transform: none; /* Safari Compatibility */
-        }
-        #toolbar {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(255, 255, 255, 0.5);
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 1000;
-        }
-        .tool-button {
-            background-color: #C5247F;
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        #info-panel {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 5px;
-            border-radius: 1px;
-            z-index: 1000;
-        }
-        #upload-container {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-            z-index: 1000;
-        }
-        #image-upload {
-            display: none;
-        }
-        #upload-label {
-            background-color: #C5247F;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        #upload-label:hover {
-            background-color: #007B9A;
-        }
-        #filename-display {
-            margin-top: 10px;
-            font-style: italic;
-        }
-    </style>
-</head>
-<body>
 
-    <div id="viewer"></div>
-
-    <div id="toolbar">
-        <button id="zoom-in" class="tool-button">Zoom In</button>
-        <button id="zoom-out" class="tool-button">Zoom Out</button>
-        <button id="home" class="tool-button">Full View</button>
-        <br>
-        <label for="brightness-slider">Brightness</label>
-        <input type="range" id="brightness-slider" min="0" max="2" step="0.01" value="1">
-        <br>
-        <label for="contrast-slider">Contrast</label>
-        <input type="range" id="contrast-slider" min="0" max="2" step="0.01" value="1">
-    </div>
-
-    <div id="info-panel">
-        <img id="logo" src="/Users/Danny/OFM viewer/OFM_logo.png" alt="OpenFlexure Microscope Logo" width="100" height="auto">
-        <p>Zoom: <span id="zoom-level">1.00x</span></p>
-        <p>File: <span id="filename-display"></span></p>
-    </div>
-
-    <div id="upload-container">
-        <input type="file" id="image-upload" accept="image/*">
-        <label for="image-upload" id="upload-label">Upload Image</label>
-    </div>
-
-    <script>
-        let viewer;
-
-        function initializeViewer(imageSrc, fileType = 'image') {
-            if (viewer) {
-                viewer.destroy();
+        viewer = OpenSeadragon({
+            id: "viewer",
+            prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
+            tileSources: {
+                type: 'image',
+                url: imageSrc || 'path_to_default_image_or_IIIF_source',
+                buildPyramid: true,  // Enable pyramidal TIFF support
+                tileSize: 256,       // Set tile size for pyramidal images
+                crossOriginPolicy: 'Anonymous',
+                formats: ["tiff", "jpeg", "jpg", "png"]  // Add TIFF support
+            },
+            showNavigationControl: false,
+            maxZoomPixelRatio: 10,
+            gestureSettingsMouse: {
+                clickToZoom: false
             }
+        });
 
-            viewer = OpenSeadragon({
-                id: "viewer",
-                prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
-                tileSources: {
-                    type: fileType,
-                    url: imageSrc,
-                    buildPyramid: false,
-                    crossOriginPolicy: "Anonymous" // To avoid CORS issues
-                },
-                showNavigationControl: false,
-                maxZoomPixelRatio: 10,
-                gestureSettingsMouse: {
-                    clickToZoom: false
-                }
-            });
+        viewer.addHandler('zoom', function() {
+            updateZoomLevel();
+        });
+    }
 
-            viewer.addHandler('zoom', function() {
-                updateZoomLevel();
-            });
-        }
-
-        function updateZoomLevel() {
-            const zoomLevel = viewer.viewport.getZoom();
-            document.getElementById('zoom-level').textContent = zoomLevel.toFixed(2) + 'x';
-        }
-
-        // Using Object URLs for Safari compatibility with large images
-        document.getElementById('image-upload').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                initializeViewer(url, 'image'); // Use Object URL for iOS compatibility
+    document.getElementById('image-upload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                initializeViewer(event.target.result);
                 displayFileName(file.name);
-
-                // Revoke the object URL after the image has been loaded to free memory
-                viewer.addOnceHandler('open', function() {
-                    URL.revokeObjectURL(url);
-                });
-            }
-        });
-
-        function displayFileName(fileName) {
-            document.getElementById('filename-display').textContent = fileName;
+            };
+            reader.readAsDataURL(file); // This will work for non-TIFF images.
         }
+    });
 
-        // Initial hardcoded image to test viewer setup
-        initializeViewer('https://openflexure.org/assets/openflexurecon2022/group_photo.jpg');
-
-        document.getElementById('zoom-in').addEventListener('click', function() {
-            viewer.viewport.zoomBy(1.5);
-        });
-
-        document.getElementById('zoom-out').addEventListener('click', function() {
-            viewer.viewport.zoomBy(0.67);
-        });
-
-        document.getElementById('home').addEventListener('click', function() {
-            viewer.viewport.goHome();
-        });
-
-    </script>
-</body>
-</html>
+    initializeViewer();
+</script>
