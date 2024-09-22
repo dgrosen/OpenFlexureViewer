@@ -16,6 +16,7 @@
             width: 100%;
             height: 100%;
             position: absolute;
+            -webkit-transform: none; /* Safari Compatibility */
         }
         #toolbar {
             position: absolute;
@@ -85,13 +86,20 @@
         <button id="zoom-in" class="tool-button">Zoom In</button>
         <button id="zoom-out" class="tool-button">Zoom Out</button>
         <button id="home" class="tool-button">Full View</button>
+        <br>
+        <label for="brightness-slider">Brightness</label>
+        <input type="range" id="brightness-slider" min="0" max="2" step="0.01" value="1">
+        <br>
+        <label for="contrast-slider">Contrast</label>
+        <input type="range" id="contrast-slider" min="0" max="2" step="0.01" value="1">
     </div>
 
     <div id="info-panel">
-        <img id="logo" src="images/OFM_logo.png" alt="OpenFlexure Microscope Logo" width="100" height="auto">
+        <img id="logo" src="/Users/Danny/OFM viewer/OFM_logo.png" alt="OpenFlexure Microscope Logo" width="100" height="auto">
         <p>Zoom: <span id="zoom-level">1.00x</span></p>
         <p>File: <span id="filename-display"></span></p>
     </div>
+
     <div id="upload-container">
         <input type="file" id="image-upload" accept="image/*">
         <label for="image-upload" id="upload-label">Upload Image</label>
@@ -110,8 +118,9 @@
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
                 tileSources: {
                     type: 'image',
-                    url: imageSrc || 'images/AIN3.jpg',
-                    buildPyramid: true
+                    url: imageSrc || 'https://openflexure.org/assets/openflexurecon2022/group_photo.jpg', // Hardcoded image for testing
+                    buildPyramid: false,
+                    crossOriginPolicy: 'Anonymous' // To avoid CORS issues
                 },
                 showNavigationControl: false,
                 maxZoomPixelRatio: 10,
@@ -129,53 +138,13 @@
             const zoomLevel = viewer.viewport.getZoom();
             document.getElementById('zoom-level').textContent = zoomLevel.toFixed(2) + 'x';
         }
-        
-        function displayFileName(fileName) {
-            document.getElementById('info-panel').innerHTML = `
-                <img id="logo" src="images/OFM_logo.png" alt="OpenFlexure Microscope Logo" width="100" height="auto">
-                <p>File: ${fileName}</p>
-                <p>Zoom: <span id="zoom-level">1.00x</span></p>
-            `;
-        }
-        
-        function updatePosition() {
-            const center = viewer.viewport.getCenter();
-            document.getElementById('position').textContent = 
-                `${center.x.toFixed(2)}, ${center.y.toFixed(2)}`;
-        }
-        
-        function displayFileName(fileName) {
-            document.getElementById('info-panel').innerHTML = `
-                <img id="logo" src="images/OFM_logo.png" alt="OpenFlexure Microscope Logo" width="100" height="auto">
-                <p>File: ${fileName}</p>
-                <p>Zoom: <span id="zoom-level">1.00x</span></p>
-            `;
-        }
-        
-        function dropHandler(ev) {
-            console.log('File(s) dropped');
-            ev.preventDefault();
 
-            if (ev.dataTransfer.items) {
-                [...ev.dataTransfer.items].forEach((item, i) => {
-                    if (item.kind === 'file') {
-                        const file = item.getAsFile();
-                        console.log(`… file[${i}].name = ${file.name}`);
-                        displayFileName(file.name);
-                        // Process the file here (e.g., display it in the viewer)
-                    }
-                });
-            } else {
-                [...ev.dataTransfer.files].forEach((file, i) => {
-                    console.log(`… file[${i}].name = ${file.name}`);
-                    displayFileName(file.name);
-                    // Process the file here (e.g., display it in the viewer)
-                });
-            }
-            
-            ev.target.classList.remove('dragover');
+        // Temporary removal of CSS filters to test rendering on iOS
+        function updateFilters() {
+            const brightness = document.getElementById('brightness-slider').value;
+            const contrast = document.getElementById('contrast-slider').value;
+            viewer.drawer.canvas.style.filter = ''; // Remove filters for testing iOS
         }
-
 
         document.getElementById('zoom-in').addEventListener('click', function() {
             viewer.viewport.zoomBy(1.5);
@@ -189,19 +158,33 @@
             viewer.viewport.goHome();
         });
 
+        document.getElementById('brightness-slider').addEventListener('input', updateFilters);
+        document.getElementById('contrast-slider').addEventListener('input', updateFilters);
+
         document.getElementById('image-upload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    initializeViewer(event.target.result);
-                    displayFileName(file.name);
+                    try {
+                        initializeViewer(event.target.result);
+                        displayFileName(file.name);
+                    } catch (error) {
+                        console.error("Error loading file on iOS: ", error);
+                    }
+                };
+                reader.onerror = function(error) {
+                    console.error("FileReader error on iOS: ", error);
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        initializeViewer();
+        function displayFileName(fileName) {
+            document.getElementById('filename-display').textContent = fileName;
+        }
+
+        initializeViewer(); // Initialize with the hardcoded image first
     </script>
 </body>
 </html>
