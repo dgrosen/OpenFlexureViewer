@@ -108,7 +108,7 @@
     <script>
         let viewer;
 
-        function initializeViewer(imageSrc) {
+        function initializeViewer(imageSrc, fileType = 'image') {
             if (viewer) {
                 viewer.destroy();
             }
@@ -117,10 +117,10 @@
                 id: "viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
                 tileSources: {
-                    type: 'image',
-                    url: imageSrc || 'https://openflexure.org/assets/openflexurecon2022/group_photo.jpg', // Hardcoded image for testing
+                    type: fileType,
+                    url: imageSrc,
                     buildPyramid: false,
-                    crossOriginPolicy: 'Anonymous' // To avoid CORS issues
+                    crossOriginPolicy: "Anonymous" // To avoid CORS issues
                 },
                 showNavigationControl: false,
                 maxZoomPixelRatio: 10,
@@ -139,12 +139,27 @@
             document.getElementById('zoom-level').textContent = zoomLevel.toFixed(2) + 'x';
         }
 
-        // Temporary removal of CSS filters to test rendering on iOS
-        function updateFilters() {
-            const brightness = document.getElementById('brightness-slider').value;
-            const contrast = document.getElementById('contrast-slider').value;
-            viewer.drawer.canvas.style.filter = ''; // Remove filters for testing iOS
+        // Using Object URLs for Safari compatibility with large images
+        document.getElementById('image-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                initializeViewer(url, 'image'); // Use Object URL for iOS compatibility
+                displayFileName(file.name);
+
+                // Revoke the object URL after the image has been loaded to free memory
+                viewer.addOnceHandler('open', function() {
+                    URL.revokeObjectURL(url);
+                });
+            }
+        });
+
+        function displayFileName(fileName) {
+            document.getElementById('filename-display').textContent = fileName;
         }
+
+        // Initial hardcoded image to test viewer setup
+        initializeViewer('https://openflexure.org/assets/openflexurecon2022/group_photo.jpg');
 
         document.getElementById('zoom-in').addEventListener('click', function() {
             viewer.viewport.zoomBy(1.5);
@@ -158,33 +173,6 @@
             viewer.viewport.goHome();
         });
 
-        document.getElementById('brightness-slider').addEventListener('input', updateFilters);
-        document.getElementById('contrast-slider').addEventListener('input', updateFilters);
-
-        document.getElementById('image-upload').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    try {
-                        initializeViewer(event.target.result);
-                        displayFileName(file.name);
-                    } catch (error) {
-                        console.error("Error loading file on iOS: ", error);
-                    }
-                };
-                reader.onerror = function(error) {
-                    console.error("FileReader error on iOS: ", error);
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        function displayFileName(fileName) {
-            document.getElementById('filename-display').textContent = fileName;
-        }
-
-        initializeViewer(); // Initialize with the hardcoded image first
     </script>
 </body>
 </html>
